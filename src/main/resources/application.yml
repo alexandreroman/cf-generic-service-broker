@@ -1,0 +1,21 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+spring:
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: create
+
+broker:
+  service:
+    id: "dababase-custom"
+    name: "Custom Database"
+    url: "jdbc:mysql://mydbhost/db"
+    description: "Exposes a custom database as a service"
+    icon: "https://i.imgur.com/WIE9ayD.png"
+  credentials:
+    password: "admin"

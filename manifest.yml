@@ -1,0 +1,12 @@
+---
+applications:
+  - name: generic-service-broker
+    path: target/generic-service-broker.jar
+    buildpacks:
+      - https://github.com/cloudfoundry/java-buildpack.git
+    env:
+      BROKER_SERVICE_ID: "database-custom"
+      BROKER_SERVICE_NAME: "Custom database"
+      BROKER_SERVICE_URL: "jdbc:mysql://mydbhost/db"
+      BROKER_SERVICE_DESCRIPTION: "Exposes a custom database as a service"
+      BROKER_CREDENTIALS_PASSWORD: admin
