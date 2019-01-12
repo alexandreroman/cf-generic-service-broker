@@ -16,8 +16,6 @@
 
 package fr.alexandreroman.genericservicebroker
 
-import org.springframework.cloud.servicebroker.exception.ServiceInstanceBindingDoesNotExistException
-import org.springframework.cloud.servicebroker.exception.ServiceInstanceBindingExistsException
 import org.springframework.cloud.servicebroker.exception.ServiceInstanceDoesNotExistException
 import org.springframework.cloud.servicebroker.exception.ServiceInstanceExistsException
 import org.springframework.cloud.servicebroker.model.binding.*
@@ -30,15 +28,6 @@ import org.springframework.cloud.servicebroker.service.ServiceInstanceBindingSer
 import org.springframework.cloud.servicebroker.service.ServiceInstanceService
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
-
-fun main(args: Array<String>) {
-    val url = "jdbc:mysql:mydbhost/db"
-    if (url.startsWith("jdbc:")) {
-        val i = "jdbc:".length
-        val j = url.indexOf(":", i)
-        println(url.substring(i, j))
-    }
-}
 
 /**
  * Custom [CatalogService] implementation.
@@ -55,7 +44,7 @@ class GenericCatalogService(private val props: ServiceProperties) : CatalogServi
                 .name(props.id)
                 .description(props.description)
                 .instancesRetrievable(true)
-                .bindingsRetrievable(true)
+                .bindingsRetrievable(false)
                 .planUpdateable(false)
                 .plans(standardPlan())
                 .metadata(mapOf(
@@ -103,7 +92,10 @@ class GenericCatalogService(private val props: ServiceProperties) : CatalogServi
  * through the Open Service Broker API.
  */
 @Service
-class GenericServiceInstanceService(private val instanceRepo: GenericServiceInstanceRepository) : ServiceInstanceService {
+class GenericServiceInstanceService(
+        private val instanceRepo: GenericServiceInstanceRepository,
+        private val props: ServiceProperties,
+        private val onDemandServices: List<OnDemandService>) : ServiceInstanceService {
     override fun createServiceInstance(req: CreateServiceInstanceRequest?): CreateServiceInstanceResponse {
         checkServiceDefinitionAndPlan(req!!.serviceDefinitionId, req.planId)
 
@@ -112,7 +104,15 @@ class GenericServiceInstanceService(private val instanceRepo: GenericServiceInst
             throw ServiceInstanceExistsException(req.serviceInstanceId, req.serviceDefinitionId)
         }
 
-        val instance = GenericServiceInstance(req.serviceInstanceId)
+        var newUrl = props.url
+        for (ods in onDemandServices) {
+            if (ods.supports(props.url)) {
+                newUrl = ods.bind(props.url, req.serviceInstanceId)
+                break
+            }
+        }
+
+        val instance = GenericServiceInstance(req.serviceInstanceId, newUrl)
         instanceRepo.save(instance)
 
         return CreateServiceInstanceResponse.builder()
@@ -123,6 +123,12 @@ class GenericServiceInstanceService(private val instanceRepo: GenericServiceInst
         checkServiceDefinitionAndPlan(req!!.serviceDefinitionId, req.planId)
         if (instanceRepo.existsById(req.serviceInstanceId)) {
             instanceRepo.deleteById(req.serviceInstanceId)
+        }
+        for (ods in onDemandServices) {
+            if (ods.supports(props.url)) {
+                ods.unbind(props.url, req.serviceInstanceId)
+                break
+            }
         }
         return DeleteServiceInstanceResponse.builder()
                 .async(false).build()
@@ -158,51 +164,32 @@ class GenericServiceInstanceService(private val instanceRepo: GenericServiceInst
  */
 @Service
 class GenericServiceInstanceBindingService(
-        private val instanceBindingRepo: GenericServiceBindingInstanceRepository,
-        private val props: ServiceProperties) : ServiceInstanceBindingService {
+        private val instanceRepo: GenericServiceInstanceRepository) : ServiceInstanceBindingService {
     override fun createServiceInstanceBinding(req: CreateServiceInstanceBindingRequest?): CreateServiceInstanceBindingResponse {
         checkServiceDefinitionAndPlan(req!!.serviceDefinitionId, req.planId)
 
-        val bindingExisted = instanceBindingRepo.findById(req.bindingId).isPresent
-        if (bindingExisted) {
-            throw ServiceInstanceBindingExistsException(req.serviceInstanceId, req.bindingId)
-        }
-        val binding = GenericServiceBindingInstance(req.bindingId, props.url)
-        instanceBindingRepo.save(binding)
-
+        val instance = instanceRepo.getOne(req.serviceInstanceId)
         val svc = CreateServiceInstanceAppBindingResponse.builder()
-                .bindingExisted(bindingExisted)
-        createCredentials(binding).forEach { k, v -> svc.credentials(k, v) }
+                .bindingExisted(false)
+        createCredentials(instance).forEach { k, v -> svc.credentials(k, v) }
         return svc.build()
     }
 
     override fun deleteServiceInstanceBinding(req: DeleteServiceInstanceBindingRequest?): DeleteServiceInstanceBindingResponse {
-        checkServiceDefinitionAndPlan(req!!.serviceDefinitionId, req.planId)
-        if (instanceBindingRepo.existsById(req.bindingId)) {
-            instanceBindingRepo.deleteById(req.bindingId)
-        }
         return DeleteServiceInstanceBindingResponse.builder()
                 .async(false).build()
     }
 
-    override fun getServiceInstanceBinding(req: GetServiceInstanceBindingRequest?): GetServiceInstanceBindingResponse {
-        val bindingOpt = instanceBindingRepo.findById(req!!.bindingId)
-        if (!bindingOpt.isPresent) {
-            throw ServiceInstanceBindingDoesNotExistException(req.bindingId)
-        }
-        val binding = bindingOpt.get()
-        val svc = GetServiceInstanceAppBindingResponse.builder()
-        createCredentials(binding).forEach { k, v -> svc.credentials(k, v) }
-        return svc.build()
-    }
+    override fun getServiceInstanceBinding(req: GetServiceInstanceBindingRequest?) =
+            throw UnsupportedOperationException()
 
-    private fun createCredentials(binding: GenericServiceBindingInstance): Map<String, String> {
-        if (binding.url.startsWith("jdbc:")) {
+    private fun createCredentials(instance: GenericServiceInstance): Map<String, String> {
+        if (instance.url.startsWith("jdbc:")) {
             return mapOf(
-                    "jdbcUrl" to binding.url,
-                    "uri" to binding.url.removePrefix("jdbc:")
+                    "jdbcUrl" to instance.url,
+                    "uri" to instance.url.removePrefix("jdbc:")
             )
         }
-        return mapOf("uri" to binding.url)
+        return mapOf("uri" to instance.url)
     }
 }

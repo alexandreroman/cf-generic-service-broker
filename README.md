@@ -29,6 +29,10 @@ your Cloud native applications do not require an update.
 Use this project to connect any services (especially those running outside of
 your Cloud platform) to your applications.
 
+**Note**
+When using PostgreSQL, this service broker creates *on-demand* schemas,
+so that each client application has its own namespace for creating tables.
+
 ## How to use it?
 
 This project requires JDK 8:
@@ -40,7 +44,7 @@ $ ./mvnw clean package
 
 Just push the main JAR file to Cloud Foundry:
 ```bash
-$ cf push
+$ cf push --no-start
 ```
 
 Make sure you use a different application name if you need to

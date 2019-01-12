@@ -23,21 +23,12 @@ import javax.persistence.Entity
 import javax.persistence.Id
 
 @Entity
-data class GenericServiceBindingInstance(
+data class GenericServiceInstance(
         @Id
         var instanceId: String = "",
         @Column(nullable = false)
         var url: String = ""
 )
-
-@Entity
-data class GenericServiceInstance(
-        @Id
-        var instanceId: String = ""
-)
-
-@Repository
-interface GenericServiceBindingInstanceRepository : JpaRepository<GenericServiceBindingInstance, String>
 
 @Repository
 interface GenericServiceInstanceRepository : JpaRepository<GenericServiceInstance, String>

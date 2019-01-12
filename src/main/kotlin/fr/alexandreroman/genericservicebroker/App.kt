@@ -24,10 +24,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 
 @EnableJpaRepositories
 @SpringBootApplication
-class CloudFoundryGenericServiceBrokerApplication
+class Application
 
 fun main(args: Array<String>) {
-    runApplication<CloudFoundryGenericServiceBrokerApplication>(*args)
+    runApplication<Application>(*args)
 }
 
 @Configuration

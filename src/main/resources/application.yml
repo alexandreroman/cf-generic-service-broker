@@ -14,8 +14,9 @@ broker:
   service:
     id: "dababase-custom"
     name: "Custom Database"
-    url: "jdbc:mysql://mydbhost/db"
-    description: "Exposes a custom database as a service"
+    url: "jdbc:postgresql://mydbhost/db?user=foo&password=secret"
+    description: "Expose a custom database as a service"
     icon: "https://i.imgur.com/WIE9ayD.png"
+    provider: "Pivotal Software Inc."
   credentials:
     password: "admin"

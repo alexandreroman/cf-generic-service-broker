@@ -7,6 +7,6 @@ applications:
     env:
       BROKER_SERVICE_ID: "database-custom"
       BROKER_SERVICE_NAME: "Custom database"
-      BROKER_SERVICE_URL: "jdbc:mysql://mydbhost/db"
-      BROKER_SERVICE_DESCRIPTION: "Exposes a custom database as a service"
+      BROKER_SERVICE_URL: "jdbc:postgresql://mydbhost/db?user=foo&password=secret"
+      BROKER_SERVICE_DESCRIPTION: "Expose a custom database as a service"
       BROKER_CREDENTIALS_PASSWORD: admin
